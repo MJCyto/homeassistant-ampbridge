@@ -1,0 +1,10 @@
+{
+  "domain": "ampbridge",
+  "name": "AmpBridge",
+  "documentation": "https://github.com/yourusername/homeassistant-ampbridge",
+  "requirements": ["paho-mqtt>=1.6.0"],
+  "dependencies": ["mqtt"],
+  "codeowners": ["@yourusername"],
+  "config_flow": true,
+  "version": "1.0.0"
+}

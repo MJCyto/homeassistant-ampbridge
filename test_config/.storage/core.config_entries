@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "minor_version": 5,
+  "key": "core.config_entries",
+  "data": {
+    "entries": [
+      {"created_at":"2025-09-14T03:02:39.294739+00:00","data":{},"disabled_by":null,"discovery_keys":{},"domain":"sun","entry_id":"01K532SDDYP9PDSJ0VKRRKXJQ9","minor_version":1,"modified_at":"2025-09-14T03:02:39.294743+00:00","options":{},"pref_disable_new_entities":false,"pref_disable_polling":false,"source":"import","subentries":[],"title":"Sun","unique_id":null,"version":1},
+      {"created_at":"2025-09-14T03:02:39.455041+00:00","data":{},"disabled_by":null,"discovery_keys":{},"domain":"go2rtc","entry_id":"01K532SDJZ881BQ09W47FH18P6","minor_version":1,"modified_at":"2025-09-14T03:02:39.455042+00:00","options":{},"pref_disable_new_entities":false,"pref_disable_polling":false,"source":"system","subentries":[],"title":"go2rtc","unique_id":null,"version":1},
+      {"created_at":"2025-09-14T03:02:39.460166+00:00","data":{},"disabled_by":null,"discovery_keys":{},"domain":"backup","entry_id":"01K532SDK4459Z45FJ1Q4WZNB7","minor_version":1,"modified_at":"2025-09-14T03:02:39.460167+00:00","options":{},"pref_disable_new_entities":false,"pref_disable_polling":false,"source":"system","subentries":[],"title":"Backup","unique_id":null,"version":1},
+      {"created_at":"2025-09-14T03:10:14.026171+00:00","data":{},"disabled_by":null,"discovery_keys":{},"domain":"shopping_list","entry_id":"01K53379GAPGJRNC5J4C7ZQTW4","minor_version":1,"modified_at":"2025-09-14T03:10:14.026174+00:00","options":{},"pref_disable_new_entities":false,"pref_disable_polling":false,"source":"onboarding","subentries":[],"title":"Shopping list","unique_id":"shopping_list","version":1},
+      {"created_at":"2025-09-14T03:10:14.034118+00:00","data":{"language":"en","tld":"com"},"disabled_by":null,"discovery_keys":{},"domain":"google_translate","entry_id":"01K53379GJ8YFY4X2353JB14Q8","minor_version":1,"modified_at":"2025-09-14T03:10:14.034120+00:00","options":{},"pref_disable_new_entities":false,"pref_disable_polling":false,"source":"onboarding","subentries":[],"title":"Google Translate text-to-speech","unique_id":null,"version":1},
+      {"created_at":"2025-09-14T03:10:14.082522+00:00","data":{},"disabled_by":null,"discovery_keys":{},"domain":"radio_browser","entry_id":"01K53379J2FGY62EHCNJREWS9Z","minor_version":1,"modified_at":"2025-09-14T03:10:14.082525+00:00","options":{},"pref_disable_new_entities":false,"pref_disable_polling":false,"source":"onboarding","subentries":[],"title":"Radio Browser","unique_id":null,"version":1},
+      {"created_at":"2025-09-26T19:00:20.721923+00:00","data":{"host":"192.168.1.233","port":1885},"disabled_by":null,"discovery_keys":{},"domain":"ampbridge","entry_id":"01K63PBM3HDZ03Q48DB5D3J7FB","minor_version":1,"modified_at":"2025-09-26T19:00:20.721926+00:00","options":{},"pref_disable_new_entities":false,"pref_disable_polling":false,"source":"user","subentries":[],"title":"AmpBridge (192.168.1.233)","unique_id":"192.168.1.233:1885","version":1}
+    ]
+  }
+}

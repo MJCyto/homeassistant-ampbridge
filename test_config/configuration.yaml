@@ -1,0 +1,9 @@
+# Test configuration for AmpBridge integration
+default_config:
+
+# Enable logging for debugging
+logger:
+  default: info
+  logs:
+    custom_components.ampbridge: debug
+    homeassistant.components.mqtt: debug

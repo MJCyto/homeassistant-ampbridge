@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "minor_version": 1,
+  "key": "person",
+  "data": {
+    "items": [
+      {
+        "id": "ampbridge",
+        "name": "ampbridge",
+        "user_id": "af884a7f1b4442b48f56d13a5f7309da",
+        "device_trackers": []
+      }
+    ]
+  }
+}

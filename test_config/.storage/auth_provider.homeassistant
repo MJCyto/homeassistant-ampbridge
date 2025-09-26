@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "minor_version": 1,
+  "key": "auth_provider.homeassistant",
+  "data": {
+    "users": [
+      {
+        "username": "ampbridge",
+        "password": "JDJiJDEyJGtnZWNuWlVDbk1ML3RiMk5QYkhCdHVKSkNqd0p1YnFYbnlDbWd4M1F2Mmlyb3hoRWZ5anJT"
+      }
+    ]
+  }
+}

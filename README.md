@@ -1,6 +1,8 @@
 # Home Assistant AmpBridge Integration
 
-This is a Home Assistant custom integration for the AmpBridge multi-zone amplifier controller.
+This is a Home Assistant custom integration for AmpBridge.
+
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 
 ## Features
 

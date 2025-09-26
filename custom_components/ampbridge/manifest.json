@@ -1,7 +1,7 @@
 {
   "domain": "ampbridge",
   "name": "AmpBridge",
-  "documentation": "https://github.com/mjcyto/homeassistant-ampbridge",
+  "documentation": "https://github.com/MJCyto/homeassistant-ampbridge",
   "requirements": ["paho-mqtt>=1.6.0", "aiohttp>=3.8.0"],
   "dependencies": ["mqtt"],
   "codeowners": ["@mjcyto"],

@@ -1,0 +1,7 @@
+{
+  "name": "AmpBridge",
+  "content_in_root": false,
+  "filename": "ampbridge",
+  "country": ["US"],
+  "homeassistant": "2023.1.0"
+}

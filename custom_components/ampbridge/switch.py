@@ -60,11 +60,7 @@ class AmpBridgeMuteSwitch(CoordinatorEntity, SwitchEntity):
     @property
     def name(self) -> str:
         """Return the name of the switch."""
-        zone_data = self.coordinator.data.get(self._zone_id)
-        if zone_data:
-            current_name = zone_data.get("name", f"Zone {self._zone_id + 1}")
-            return f"{current_name} Mute"
-        return f"Zone {self._zone_id + 1} Mute"
+        return "Mute"
 
     @property
     def device_info(self) -> dict[str, Any]:
@@ -77,7 +73,7 @@ class AmpBridgeMuteSwitch(CoordinatorEntity, SwitchEntity):
         
         return {
             "identifiers": {(DOMAIN, f"zone_{self._zone_id}")},
-            "name": current_name,
+            "name": f"AmpBridge - {current_name}",
             "manufacturer": "AmpBridge",
             "model": "Audio Zone",
         }

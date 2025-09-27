@@ -62,11 +62,7 @@ class AmpBridgeSourceSelect(CoordinatorEntity, SelectEntity):
     @property
     def name(self) -> str:
         """Return the name of the select entity."""
-        zone_data = self.coordinator.data.get(self._zone_id)
-        if zone_data:
-            current_name = zone_data.get("name", f"Zone {self._zone_id + 1}")
-            return f"{current_name} Source"
-        return f"Zone {self._zone_id + 1} Source"
+        return "Source"
 
     @property
     def device_info(self) -> dict[str, Any]:
@@ -79,7 +75,7 @@ class AmpBridgeSourceSelect(CoordinatorEntity, SelectEntity):
         
         return {
             "identifiers": {(DOMAIN, f"zone_{self._zone_id}")},
-            "name": current_name,
+            "name": f"AmpBridge - {current_name}",
             "manufacturer": "AmpBridge",
             "model": "Audio Zone",
         }

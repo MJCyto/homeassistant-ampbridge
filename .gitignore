@@ -131,6 +131,7 @@ dmypy.json
 
 # Home Assistant specific
 .homeassistant/
+test_config/
 home-assistant_v2.db*
 *.log*
 

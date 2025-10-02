@@ -4,10 +4,14 @@ DOMAIN = "ampbridge"
 
 # MQTT Topics
 MQTT_BASE_TOPIC = "ampbridge/zones"
+MQTT_GROUPS_BASE_TOPIC = "ampbridge/groups"
 MQTT_STATUS_TOPIC = f"{MQTT_BASE_TOPIC}/status"
 
 # Zone attributes
 ZONE_ATTRIBUTES = ["volume", "mute", "source", "connected", "name"]
+
+# Group attributes
+GROUP_ATTRIBUTES = ["volume", "mute", "source", "name", "description", "zone_count"]
 
 # Device info
 DEVICE_MANUFACTURER = "AmpBridge"

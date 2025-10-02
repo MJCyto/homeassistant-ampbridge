@@ -12,7 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, MQTT_BASE_TOPIC
+from .const import DOMAIN, MQTT_BASE_TOPIC, MQTT_GROUPS_BASE_TOPIC
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,6 +27,7 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.mqtt_client: mqtt.Client | None = None
         self.connected = False
         self.zones: dict[int, dict[str, Any]] = {}
+        self.groups: dict[int, dict[str, Any]] = {}
         self.api_url = f"http://{entry.data['host']}:4000/api"
         
         # Initialize with empty data
@@ -38,9 +39,10 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
 
     async def async_start(self) -> None:
-        """Start the MQTT client and discover zones."""
-        # First discover zones via API
+        """Start the MQTT client and discover zones and groups."""
+        # First discover zones and groups via API
         await self._discover_zones_via_api()
+        await self._discover_groups_via_api()
         
         # Then start MQTT client
         await self.hass.async_add_executor_job(self._start_mqtt_client)
@@ -82,42 +84,94 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             
             _LOGGER.debug(f"Received MQTT message: {topic} = {payload}")
             
-            # Parse topic to extract zone info
-            # Expected format: ampbridge/zones/{zone_id}/{attribute}
+            # Parse topic to extract zone or group info
+            # Expected format: ampbridge/zones/{zone_id}/{attribute} or ampbridge/groups/{group_id}/{attribute}
             parts = topic.split("/")
-            if len(parts) >= 4 and parts[0] == "ampbridge" and parts[1] == "zones":
-                try:
-                    zone_id = int(parts[2])
-                    attribute = parts[3]
+            if len(parts) >= 4 and parts[0] == "ampbridge":
+                if parts[1] == "zones":
+                    try:
+                        zone_id = int(parts[2])
+                        attribute = parts[3]
+                        
+                        # Only update existing zones from MQTT, don't create new ones
+                        # Zone creation is now handled by API discovery
+                        if zone_id not in self.zones:
+                            _LOGGER.debug(f"Received MQTT message for unknown zone {zone_id}, skipping")
+                            return
+                        
+                        # Update zone data
+                        if attribute == "name":
+                            self.zones[zone_id]["name"] = payload
+                        elif attribute == "volume":
+                            try:
+                                self.zones[zone_id]["volume"] = int(payload)
+                            except ValueError:
+                                _LOGGER.warning(f"Invalid volume value: {payload}")
+                        elif attribute == "mute":
+                            self.zones[zone_id]["mute"] = payload
+                        elif attribute == "source":
+                            self.zones[zone_id]["source"] = payload
+                        elif attribute == "connected":
+                            self.zones[zone_id]["connected"] = payload
+                        
+                        # Trigger update - schedule on the event loop
+                        self.hass.loop.call_soon_threadsafe(
+                            lambda: self.async_set_updated_data(self.zones.copy())
+                        )
+                        
+                    except ValueError:
+                        _LOGGER.warning(f"Invalid zone ID in topic: {topic}")
+                        
+                elif parts[1] == "groups":
+                    try:
+                        group_id = int(parts[2])
+                        attribute = parts[3]
+                        
+                        # Create group if it doesn't exist
+                        if group_id not in self.groups:
+                            self.groups[group_id] = {
+                                "group_id": group_id,
+                                "name": f"Group {group_id}",
+                                "volume": 50,
+                                "mute": "OFF",
+                                "source": "Off",
+                                "description": "",
+                                "zone_count": 0
+                            }
+                        
+                        # Update group data
+                        if attribute == "name":
+                            self.groups[group_id]["name"] = payload
+                        elif attribute == "description":
+                            self.groups[group_id]["description"] = payload
+                        elif attribute == "volume":
+                            try:
+                                self.groups[group_id]["volume"] = int(payload)
+                            except ValueError:
+                                _LOGGER.warning(f"Invalid volume value: {payload}")
+                        elif attribute == "mute":
+                            self.groups[group_id]["mute"] = payload
+                        elif attribute == "source":
+                            self.groups[group_id]["source"] = payload
+                        elif attribute == "zone_count":
+                            try:
+                                self.groups[group_id]["zone_count"] = int(payload)
+                            except ValueError:
+                                _LOGGER.warning(f"Invalid zone_count value: {payload}")
+                        
+                        # Trigger update - schedule on the event loop
+                        self.hass.loop.call_soon_threadsafe(
+                            lambda: self.async_set_updated_data(self.zones.copy())
+                        )
+                        
+                    except ValueError:
+                        _LOGGER.warning(f"Invalid group ID in topic: {topic}")
                     
-                    # Only update existing zones from MQTT, don't create new ones
-                    # Zone creation is now handled by API discovery
-                    if zone_id not in self.zones:
-                        _LOGGER.debug(f"Received MQTT message for unknown zone {zone_id}, skipping")
-                        return
+                else:
+                    _LOGGER.debug(f"Unknown MQTT topic type: {topic}")
                     
-                    # Update zone data
-                    if attribute == "name":
-                        self.zones[zone_id]["name"] = payload
-                    elif attribute == "volume":
-                        try:
-                            self.zones[zone_id]["volume"] = int(payload)
-                        except ValueError:
-                            _LOGGER.warning(f"Invalid volume value: {payload}")
-                    elif attribute == "mute":
-                        self.zones[zone_id]["mute"] = payload
-                    elif attribute == "source":
-                        self.zones[zone_id]["source"] = payload
-                    elif attribute == "connected":
-                        self.zones[zone_id]["connected"] = payload
-                    
-                    # Trigger update - schedule on the event loop
-                    self.hass.loop.call_soon_threadsafe(
-                        lambda: self.async_set_updated_data(self.zones.copy())
-                    )
-                    
-                except ValueError:
-                    _LOGGER.warning(f"Invalid zone ID in topic: {topic}")
+            except ValueError:
+                _LOGGER.warning(f"Invalid ID in topic: {topic}")
                     
         except Exception as err:
             _LOGGER.error(f"Error processing MQTT message: {err}")
@@ -140,6 +194,25 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         topic = f"{MQTT_BASE_TOPIC}/{zone_id}/{command}/set"
         _LOGGER.info(f"Sending command: {topic} = {value} -> {mapped_value}")
+        
+        def _publish():
+            self.mqtt_client.publish(topic, mapped_value)
+        
+        await self.hass.async_add_executor_job(_publish)
+
+    async def async_send_group_command(self, group_id: int, command: str, value: str) -> None:
+        """Send a command to AmpBridge group via MQTT."""
+        if not self.mqtt_client or not self.connected:
+            _LOGGER.error("MQTT client not connected")
+            return
+
+        # Map source names to "Source X" format for AmpBridge
+        mapped_value = value
+        if command == "source":
+            mapped_value = self._map_source_name(value)
+
+        topic = f"{MQTT_GROUPS_BASE_TOPIC}/{group_id}/{command}/set"
+        _LOGGER.info(f"Sending group command: {topic} = {value} -> {mapped_value}")
         
         def _publish():
             self.mqtt_client.publish(topic, mapped_value)
@@ -209,6 +282,17 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         _LOGGER.error(f"API request failed with status {response.status}")
         except Exception as err:
             _LOGGER.error(f"Failed to discover zones via API: {err}")
+
+    async def _discover_groups_via_api(self) -> None:
+        """Discover zone groups via API."""
+        try:
+            # For now, we'll discover groups via MQTT since there's no API endpoint yet
+            # This could be extended to call a groups API endpoint in the future
+            _LOGGER.info("Group discovery will be handled via MQTT messages")
+            self.groups = {}
+        except Exception as err:
+            _LOGGER.error(f"Failed to discover groups via API: {err}")
+            self.groups = {}
 
     async def async_stop(self) -> None:
         """Stop the MQTT client."""

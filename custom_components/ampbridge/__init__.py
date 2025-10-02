@@ -12,7 +12,16 @@ from .coordinator import AmpBridgeCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.SWITCH, Platform.NUMBER, Platform.SELECT]
+PLATFORMS: list[Platform] = [
+    Platform.SENSOR, 
+    Platform.BINARY_SENSOR, 
+    Platform.SWITCH, 
+    Platform.NUMBER, 
+    Platform.SELECT
+]
+
+# Group platforms (these will be loaded separately)
+GROUP_PLATFORMS: list[str] = ["group_number", "group_switch", "group_select"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -27,6 +36,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_start()
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    
+    # Load group platforms
+    for platform in GROUP_PLATFORMS:
+        await hass.config_entries.async_forward_entry_setup(entry, platform)
 
     return True
 
@@ -39,6 +52,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_stop()
     
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    
+    # Unload group platforms
+    for platform in GROUP_PLATFORMS:
+        await hass.config_entries.async_unload_entry_setup(entry, platform)
 
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)

@@ -148,9 +148,12 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def _map_source_name(self, source_name: str) -> str:
         """Map source names to AmpBridge format."""
-        # Map common source names to "Source X" format
+        # Handle "Off" specially
+        if source_name == "Off":
+            return "Off"
+        
+        # First try hardcoded mappings for backwards compatibility
         source_mapping = {
-            "Off": "Off",
             "Echo": "Source 1",
             "Server": "Source 2",
             "TV": "Source 3",
@@ -161,8 +164,25 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "Phono": "Source 8",
         }
         
-        # Return mapped value or original if not found
-        return source_mapping.get(source_name, source_name)
+        if source_name in source_mapping:
+            return source_mapping[source_name]
+        
+        # If not in hardcoded mapping, look up in available sources
+        # This handles custom source names that users have configured
+        available_sources = self.get_available_sources()
+        try:
+            # Find the index of the source name in the available sources list
+            index = available_sources.index(source_name)
+            # Convert 0-based index to 1-based "Source X" format
+            return f"Source {index + 1}"
+        except ValueError:
+            # Source name not found in available sources
+            # If it's already in "Source X" format, return as-is
+            if source_name.startswith("Source ") and source_name[7:].isdigit():
+                return source_name
+            # Otherwise, log warning and return original
+            _LOGGER.warning(f"Could not map source name '{source_name}' to 'Source X' format. Available sources: {available_sources}")
+            return source_name
 
     def get_available_sources(self) -> list[str]:
         """Get all available sources from all zones."""

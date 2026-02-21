@@ -132,6 +132,11 @@ dmypy.json
 # Home Assistant specific
 .homeassistant/
 test_config/
+.storage/
+.cloud/
+
+# HACS - full integration copied for dev/validation; users install via HACS store
+custom_components/hacs/
 home-assistant_v2.db*
 *.log*
 

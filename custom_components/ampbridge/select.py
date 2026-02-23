@@ -103,23 +103,22 @@ class AmpBridgeSourceSelect(CoordinatorEntity, SelectEntity):
 
     @property
     def current_option(self) -> str | None:
-        """Return the current selected option."""
+        """Return the current selected option. Never return None so the entity state
+        never becomes 'unknown' (which causes the frontend to send option: '' and
+        trigger validation errors)."""
         zone_data = self.coordinator.data.get(self._zone_id)
         opts = self.options
         if zone_data:
             current_source = zone_data.get("source")
-            in_opts = current_source in opts
-            result = current_source if in_opts else None
+            if current_source and current_source in opts:
+                return current_source
+            # Source missing or not in options (e.g. stale/race) -> report Off, not None
             _LOGGER.debug(
-                "%s current_option zone_id=%s zone_data.source=%s in_options=%s -> %s",
-                _LOG_PREFIX, self._zone_id, current_source, in_opts, result,
+                "%s current_option zone_id=%s zone_data.source=%s not in options, using Off",
+                _LOG_PREFIX, self._zone_id, current_source,
             )
-            return result
-        _LOGGER.debug(
-            "%s current_option zone_id=%s no zone_data -> None",
-            _LOG_PREFIX, self._zone_id,
-        )
-        return None
+            return "Off"
+        return "Off"
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""

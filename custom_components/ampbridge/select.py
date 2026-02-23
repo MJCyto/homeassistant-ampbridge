@@ -15,6 +15,7 @@ from .const import DOMAIN, ICON_SOURCE
 from .coordinator import AmpBridgeCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+_LOG_PREFIX = "[AmpBridge:source]"
 
 # Default source options - will be dynamically updated from MQTT data
 DEFAULT_SOURCE_OPTIONS = ["Off", "Source 1", "Source 2", "Source 3", "Source 4"]
@@ -37,10 +38,18 @@ async def async_setup_entry(
             break
         await asyncio.sleep(0.2)
     
+    _LOGGER.info("%s setup: discovered %d zones", _LOG_PREFIX, len(coordinator.data or {}))
     # Create select entities for all discovered zones
-    for zone_id, zone_data in coordinator.data.items():
+    for zone_id, zone_data in (coordinator.data or {}).items():
+        name = zone_data.get("name", f"Zone {zone_id + 1}")
+        source = zone_data.get("source")
+        available = zone_data.get("available_sources", [])
+        _LOGGER.info(
+            "%s setup: zone_id=%s name=%s current_source=%s available_sources=%s",
+            _LOG_PREFIX, zone_id, name, source, available,
+        )
         entities.append(
-            AmpBridgeSourceSelect(coordinator, config_entry, zone_id, zone_data.get("name", f"Zone {zone_id + 1}"))
+            AmpBridgeSourceSelect(coordinator, config_entry, zone_id, name)
         )
 
     async_add_entities(entities)
@@ -85,20 +94,44 @@ class AmpBridgeSourceSelect(CoordinatorEntity, SelectEntity):
         """Return the list of available options."""
         # Get available sources from coordinator and add "Off"
         available_sources = self.coordinator.get_available_sources()
-        return ["Off"] + available_sources
+        opts = ["Off"] + available_sources
+        _LOGGER.debug(
+            "%s options zone_id=%s -> %s",
+            _LOG_PREFIX, self._zone_id, opts,
+        )
+        return opts
 
     @property
     def current_option(self) -> str | None:
-        """Return the current selected option."""
+        """Return the current selected option. Never return None so the entity state
+        never becomes 'unknown' (which causes the frontend to send option: '' and
+        trigger validation errors)."""
         zone_data = self.coordinator.data.get(self._zone_id)
+        opts = self.options
         if zone_data:
             current_source = zone_data.get("source")
-            if current_source in self.options:
+            if current_source and current_source in opts:
                 return current_source
-        return None
+            # Source missing or not in options (e.g. stale/race) -> report Off, not None
+            _LOGGER.debug(
+                "%s current_option zone_id=%s zone_data.source=%s not in options, using Off",
+                _LOG_PREFIX, self._zone_id, current_source,
+            )
+            return "Off"
+        return "Off"
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
+        _LOGGER.info(
+            "%s async_select_option CALLED zone_id=%s option=%r option_len=%d",
+            _LOG_PREFIX, self._zone_id, option, len(option) if option else 0,
+        )
+        if not (option and option.strip()):
+            _LOGGER.warning(
+                "%s async_select_option IGNORING empty option zone_id=%s",
+                _LOG_PREFIX, self._zone_id,
+            )
+            return
         await self.coordinator.async_send_command(self._zone_id, "source", option)
     
     @property

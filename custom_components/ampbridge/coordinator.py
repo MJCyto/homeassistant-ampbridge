@@ -15,6 +15,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .const import DOMAIN, MQTT_BASE_TOPIC
 
 _LOGGER = logging.getLogger(__name__)
+_LOG_PREFIX = "[AmpBridge:source]"
 
 
 class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -107,7 +108,12 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     elif attribute == "mute":
                         self.zones[zone_id]["mute"] = payload
                     elif attribute == "source":
+                        old_val = self.zones[zone_id].get("source")
                         self.zones[zone_id]["source"] = payload
+                        _LOGGER.info(
+                            "%s MQTT source zone_id=%s topic=%s old=%s new=%s",
+                            _LOG_PREFIX, zone_id, topic, old_val, payload,
+                        )
                     elif attribute == "connected":
                         self.zones[zone_id]["connected"] = payload
                     
@@ -130,16 +136,20 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_send_command(self, zone_id: int, command: str, value: str) -> None:
         """Send a command to AmpBridge via MQTT."""
         if not self.mqtt_client or not self.connected:
-            _LOGGER.error("MQTT client not connected")
+            _LOGGER.error("%s MQTT client not connected, cannot send command", _LOG_PREFIX)
             return
 
         # Map source names to "Source X" format for AmpBridge
         mapped_value = value
         if command == "source":
             mapped_value = self._map_source_name(value)
+            _LOGGER.info(
+                "%s async_send_command zone_id=%s command=source value=%r mapped_value=%r",
+                _LOG_PREFIX, zone_id, value, mapped_value,
+            )
 
         topic = f"{MQTT_BASE_TOPIC}/{zone_id}/{command}/set"
-        _LOGGER.info(f"Sending command: {topic} = {value} -> {mapped_value}")
+        _LOGGER.info("%s publish topic=%s payload=%r", _LOG_PREFIX, topic, mapped_value)
         
         def _publish():
             self.mqtt_client.publish(topic, mapped_value)
@@ -150,6 +160,7 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Map source names to AmpBridge format."""
         # Handle "Off" specially
         if source_name == "Off":
+            _LOGGER.debug("%s _map_source_name %r -> Off (explicit)", _LOG_PREFIX, source_name)
             return "Off"
         
         # First try hardcoded mappings for backwards compatibility
@@ -165,7 +176,9 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         }
         
         if source_name in source_mapping:
-            return source_mapping[source_name]
+            out = source_mapping[source_name]
+            _LOGGER.debug("%s _map_source_name %r -> %s (hardcoded)", _LOG_PREFIX, source_name, out)
+            return out
         
         # If not in hardcoded mapping, look up in available sources
         # This handles custom source names that users have configured
@@ -174,24 +187,38 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # Find the index of the source name in the available sources list
             index = available_sources.index(source_name)
             # Convert 0-based index to 1-based "Source X" format
-            return f"Source {index + 1}"
+            out = f"Source {index + 1}"
+            _LOGGER.info(
+                "%s _map_source_name %r -> %s (available_sources index %d, list=%s)",
+                _LOG_PREFIX, source_name, out, index, available_sources,
+            )
+            return out
         except ValueError:
             # Source name not found in available sources
             # If it's already in "Source X" format, return as-is
             if source_name.startswith("Source ") and source_name[7:].isdigit():
+                _LOGGER.debug("%s _map_source_name %r -> as-is (Source N format)", _LOG_PREFIX, source_name)
                 return source_name
             # Otherwise, log warning and return original
-            _LOGGER.warning(f"Could not map source name '{source_name}' to 'Source X' format. Available sources: {available_sources}")
+            _LOGGER.warning(
+                "%s _map_source_name could not map %r (not in available_sources=%s), returning as-is",
+                _LOG_PREFIX, source_name, available_sources,
+            )
             return source_name
 
     def get_available_sources(self) -> list[str]:
         """Get all available sources from all zones."""
         sources = set()
-        for zone_data in self.zones.values():
+        for zone_id, zone_data in self.zones.items():
             # Get available sources from the zone data
             available_sources = zone_data.get("available_sources", [])
             sources.update(available_sources)
-        return sorted(list(sources))
+        result = sorted(list(sources))
+        _LOGGER.debug(
+            "%s get_available_sources zones=%s -> %s",
+            _LOG_PREFIX, list(self.zones.keys()), result,
+        )
+        return result
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Update data via MQTT."""
@@ -206,19 +233,28 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     if response.status == 200:
                         data = await response.json()
                         if data.get("success") and "zones" in data:
-                            _LOGGER.info(f"Discovered {len(data['zones'])} zones via API")
-                            
+                            _LOGGER.info(
+                                "%s API discovery: %d zones",
+                                _LOG_PREFIX, len(data["zones"]),
+                            )
                             # Convert API zones to our format
                             for zone_data in data["zones"]:
                                 zone_id = zone_data["id"]
+                                source = zone_data.get("source")
+                                available_sources = zone_data.get("available_sources", [])
+                                _LOGGER.info(
+                                    "%s API zone zone_id=%s name=%s source=%s available_sources=%s",
+                                    _LOG_PREFIX, zone_id, zone_data.get("name"),
+                                    source, available_sources,
+                                )
                                 self.zones[zone_id] = {
                                     "zone_id": zone_id,
                                     "name": zone_data["name"],
                                     "volume": zone_data["volume"],
                                     "mute": "ON" if zone_data["muted"] else "OFF",
-                                    "source": zone_data["source"],
+                                    "source": source,
                                     "connected": "ON" if zone_data["connected"] else "OFF",
-                                    "available_sources": zone_data.get("available_sources", []),
+                                    "available_sources": available_sources,
                                 }
                             
                             # Trigger update with discovered zones

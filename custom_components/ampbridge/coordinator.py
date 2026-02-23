@@ -156,6 +156,12 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         
         await self.hass.async_add_executor_job(_publish)
 
+        # Optimistic update: set zone state so the UI shows the selected option
+        # immediately instead of waiting for MQTT. Backend updates will overwrite.
+        if command == "source" and zone_id in self.zones:
+            self.zones[zone_id]["source"] = value
+            self.async_set_updated_data(self.zones.copy())
+
     def _map_source_name(self, source_name: str) -> str:
         """Map source names to AmpBridge format."""
         # Handle "Off" specially
@@ -180,16 +186,14 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.debug("%s _map_source_name %r -> %s (hardcoded)", _LOG_PREFIX, source_name, out)
             return out
         
-        # If not in hardcoded mapping, look up in available sources
-        # This handles custom source names that users have configured
-        available_sources = self.get_available_sources()
+        # If not in hardcoded mapping, look up in available sources using
+        # backend order (same order as API) so "Source N" matches backend index
+        available_sources = self._get_available_sources_in_backend_order()
         try:
-            # Find the index of the source name in the available sources list
             index = available_sources.index(source_name)
-            # Convert 0-based index to 1-based "Source X" format
             out = f"Source {index + 1}"
             _LOGGER.info(
-                "%s _map_source_name %r -> %s (available_sources index %d, list=%s)",
+                "%s _map_source_name %r -> %s (backend index %d, order=%s)",
                 _LOG_PREFIX, source_name, out, index, available_sources,
             )
             return out
@@ -207,18 +211,25 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return source_name
 
     def get_available_sources(self) -> list[str]:
-        """Get all available sources from all zones."""
+        """Return available source names for the select dropdown.
+        Uses backend order (from API) so the list matches source indices."""
+        ordered = self._get_available_sources_in_backend_order()
+        if ordered:
+            return ordered
+        # Fallback if no zones yet: unique names sorted (legacy)
         sources = set()
-        for zone_id, zone_data in self.zones.items():
-            # Get available sources from the zone data
-            available_sources = zone_data.get("available_sources", [])
-            sources.update(available_sources)
-        result = sorted(list(sources))
-        _LOGGER.debug(
-            "%s get_available_sources zones=%s -> %s",
-            _LOG_PREFIX, list(self.zones.keys()), result,
-        )
-        return result
+        for zone_data in self.zones.values():
+            sources.update(zone_data.get("available_sources", []))
+        return sorted(list(sources))
+
+    def _get_available_sources_in_backend_order(self) -> list[str]:
+        """Return available_sources in the same order as the backend (API source index order).
+        Used for mapping display name -> 'Source N' so we send the correct index."""
+        for zone_data in self.zones.values():
+            sources = zone_data.get("available_sources", [])
+            if sources:
+                return list(sources)
+        return []
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Update data via MQTT."""

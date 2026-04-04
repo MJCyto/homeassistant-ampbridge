@@ -17,9 +17,6 @@ from .coordinator import AmpBridgeCoordinator
 _LOGGER = logging.getLogger(__name__)
 _LOG_PREFIX = "[AmpBridge:source]"
 
-# Default source options - will be dynamically updated from MQTT data
-DEFAULT_SOURCE_OPTIONS = ["Off", "Source 1", "Source 2", "Source 3", "Source 4"]
-
 
 async def async_setup_entry(
     hass: HomeAssistant,

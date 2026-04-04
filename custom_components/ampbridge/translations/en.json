@@ -1,0 +1,24 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "AmpBridge",
+        "description": "Connect to your AmpBridge server. MQTT port is the broker AmpBridge uses (often 1885). API port is the Phoenix web/API port (often 4000). MQTT base topic must match AmpBridge configuration (default ampbridge/zones).",
+        "data": {
+          "host": "Host",
+          "port": "MQTT broker port",
+          "api_port": "HTTP API port",
+          "use_ssl": "Use HTTPS for API",
+          "mqtt_base_topic": "MQTT base topic"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the AmpBridge API. Check host, API port, HTTPS, and that the server is running.",
+      "unknown": "Unexpected error, check logs."
+    },
+    "abort": {
+      "already_configured": "This AmpBridge instance is already configured."
+    }
+  }
+}

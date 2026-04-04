@@ -1,44 +1,52 @@
 """The AmpBridge integration."""
 from __future__ import annotations
 
-import logging
-
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from typing import Any
 
 from .const import DOMAIN
-from .coordinator import AmpBridgeCoordinator
-
-_LOGGER = logging.getLogger(__name__)
-
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.SWITCH, Platform.NUMBER, Platform.SELECT]
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: Any, entry: Any) -> bool:
     """Set up AmpBridge from a config entry."""
+    from homeassistant.const import Platform
+
+    from .coordinator import AmpBridgeCoordinator
+
     hass.data.setdefault(DOMAIN, {})
-    
-    # Create coordinator
+
     coordinator = AmpBridgeCoordinator(hass, entry)
     hass.data[DOMAIN][entry.entry_id] = coordinator
-    
-    # Start the coordinator
+
     await coordinator.async_start()
 
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    platforms = [
+        Platform.SENSOR,
+        Platform.BINARY_SENSOR,
+        Platform.SWITCH,
+        Platform.NUMBER,
+        Platform.SELECT,
+    ]
+    await hass.config_entries.async_forward_entry_setups(entry, platforms)
 
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: Any, entry: Any) -> bool:
     """Unload a config entry."""
+    from homeassistant.const import Platform
+
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    
-    # Stop the coordinator
+
     await coordinator.async_stop()
-    
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+    platforms = [
+        Platform.SENSOR,
+        Platform.BINARY_SENSOR,
+        Platform.SWITCH,
+        Platform.NUMBER,
+        Platform.SELECT,
+    ]
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, platforms)
 
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)

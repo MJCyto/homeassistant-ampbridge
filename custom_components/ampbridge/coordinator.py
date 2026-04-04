@@ -10,25 +10,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import (
-    CONF_API_PORT,
-    CONF_MQTT_BASE_TOPIC,
-    CONF_USE_SSL,
-    DEFAULT_API_PORT,
-    DOMAIN,
-    MQTT_BASE_TOPIC,
-)
+from .const import CONF_MQTT_BASE_TOPIC, DOMAIN, MQTT_BASE_TOPIC
+from .util import build_api_base_url, map_display_source_to_ampbridge, parse_zone_mqtt_topic
 
 _LOGGER = logging.getLogger(__name__)
 _LOG_PREFIX = "[AmpBridge:source]"
-
-
-def _build_api_url(entry: ConfigEntry) -> str:
-    host = entry.data["host"].strip()
-    api_port = int(entry.data.get(CONF_API_PORT, DEFAULT_API_PORT))
-    use_ssl = bool(entry.data.get(CONF_USE_SSL, False))
-    scheme = "https" if use_ssl else "http"
-    return f"{scheme}://{host}:{api_port}/api"
 
 
 class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -41,11 +27,10 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.mqtt_client: mqtt.Client | None = None
         self.connected = False
         self.zones: dict[int, dict[str, Any]] = {}
-        self.api_url = _build_api_url(entry)
+        self.api_url = build_api_base_url(entry.data)
         self.mqtt_base_topic = (
             entry.data.get(CONF_MQTT_BASE_TOPIC) or MQTT_BASE_TOPIC
         ).strip("/")
-        self._mqtt_base_parts = self.mqtt_base_topic.split("/")
 
         super().__init__(
             hass,
@@ -56,18 +41,7 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def _parse_zone_topic(self, topic: str) -> tuple[int, str] | None:
         """Parse {mqtt_base_topic}/{zone_id}/{attribute} from a full topic."""
-        parts = topic.split("/")
-        blen = len(self._mqtt_base_parts)
-        if len(parts) < blen + 2:
-            return None
-        if parts[:blen] != self._mqtt_base_parts:
-            return None
-        try:
-            zone_id = int(parts[blen])
-        except ValueError:
-            return None
-        attribute = parts[blen + 1]
-        return zone_id, attribute
+        return parse_zone_mqtt_topic(self.mqtt_base_topic, topic)
 
     async def async_start(self) -> None:
         """Start the MQTT client and discover zones."""
@@ -197,40 +171,34 @@ class AmpBridgeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def _map_source_name(self, source_name: str) -> str:
         """Map source names to AmpBridge format."""
+        available_sources = self._get_available_sources_in_backend_order()
+        out = map_display_source_to_ampbridge(source_name, available_sources)
         if source_name == "Off":
             _LOGGER.debug(
                 "%s _map_source_name %r -> Off (explicit)", _LOG_PREFIX, source_name
             )
-            return "Off"
-
-        available_sources = self._get_available_sources_in_backend_order()
-        try:
-            index = available_sources.index(source_name)
-            out = f"Source {index + 1}"
+        elif out.startswith("Source ") and out != source_name:
             _LOGGER.info(
-                "%s _map_source_name %r -> %s (backend index %d, order=%s)",
+                "%s _map_source_name %r -> %s (order=%s)",
                 _LOG_PREFIX,
                 source_name,
                 out,
-                index,
                 available_sources,
             )
-            return out
-        except ValueError:
-            if source_name.startswith("Source ") and source_name[7:].isdigit():
-                _LOGGER.debug(
-                    "%s _map_source_name %r -> as-is (Source N format)",
-                    _LOG_PREFIX,
-                    source_name,
-                )
-                return source_name
+        elif source_name.startswith("Source ") and source_name[7:].isdigit():
+            _LOGGER.debug(
+                "%s _map_source_name %r -> as-is (Source N format)",
+                _LOG_PREFIX,
+                source_name,
+            )
+        elif out == source_name and source_name != "Off":
             _LOGGER.warning(
                 "%s _map_source_name could not map %r (not in available_sources=%s), returning as-is",
                 _LOG_PREFIX,
                 source_name,
                 available_sources,
             )
-            return source_name
+        return out
 
     def get_available_sources(self) -> list[str]:
         """Return available source names for the select dropdown."""

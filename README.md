@@ -46,3 +46,20 @@ If you change the base topic in AmpBridge, set the same value in the integration
 ## Development
 
 This integration is designed to work with the AmpBridge server on your network. The server publishes zone states via MQTT and listens for control commands on the configured base topic.
+
+### Unit tests
+
+Fast tests cover pure helpers (API base URL, MQTT topic parsing, source name → `Source N` mapping) and the HTTP API check used during setup. They **do not** require installing Home Assistant.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt
+pytest
+```
+
+For full integration or UI testing, use Docker (`start_test.sh`) or a real Home Assistant instance with MQTT.
+
+### Optional: full Home Assistant component tests
+
+To exercise platforms and config flow against real HA APIs, install `homeassistant` in a venv and use the patterns from [Home Assistant development testing](https://developers.home-assistant.io/docs/development_testing). The lightweight tests above are meant to run in CI without that dependency.

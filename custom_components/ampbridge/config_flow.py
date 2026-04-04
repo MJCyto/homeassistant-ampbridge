@@ -11,6 +11,7 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.data_entry_flow import FlowResult
 
+from .api_client import async_check_zones_api
 from .const import (
     CONF_API_PORT,
     CONF_MQTT_BASE_TOPIC,
@@ -32,21 +33,6 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Optional(CONF_MQTT_BASE_TOPIC, default=MQTT_BASE_TOPIC): str,
     }
 )
-
-
-async def _async_check_api(host: str, api_port: int, use_ssl: bool) -> None:
-    """Verify AmpBridge HTTP API returns zones. Raises aiohttp.ClientError on failure."""
-    scheme = "https" if use_ssl else "http"
-    url = f"{scheme}://{host}:{api_port}/api/zones"
-    timeout = aiohttp.ClientTimeout(total=15)
-    async with aiohttp.ClientSession(timeout=timeout) as session:
-        async with session.get(url) as response:
-            if response.status != 200:
-                msg = f"HTTP {response.status} from {url}"
-                raise ValueError(msg)
-            data = await response.json()
-            if not isinstance(data, dict) or not data.get("success"):
-                raise ValueError("API response missing success or invalid JSON")
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -74,7 +60,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
         try:
-            await _async_check_api(host, api_port, use_ssl)
+            await async_check_zones_api(host, api_port, use_ssl)
         except (aiohttp.ClientError, TimeoutError, ValueError) as err:
             _LOGGER.warning("AmpBridge API check failed: %s", err)
             errors["base"] = "cannot_connect"

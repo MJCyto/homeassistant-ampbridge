@@ -2,7 +2,15 @@
 
 DOMAIN = "ampbridge"
 
-# MQTT Topics
+# Config entry keys (beyond CONF_HOST / CONF_PORT from homeassistant.const)
+CONF_API_PORT = "api_port"
+CONF_USE_SSL = "use_ssl"
+CONF_MQTT_BASE_TOPIC = "mqtt_base_topic"
+
+DEFAULT_API_PORT = 4000
+DEFAULT_MQTT_PORT = 1885
+
+# MQTT Topics (default; override via config entry CONF_MQTT_BASE_TOPIC)
 MQTT_BASE_TOPIC = "ampbridge/zones"
 MQTT_STATUS_TOPIC = f"{MQTT_BASE_TOPIC}/status"
 

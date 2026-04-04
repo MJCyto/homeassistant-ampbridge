@@ -6,10 +6,10 @@ This is a Home Assistant custom integration for AmpBridge.
 
 ## Features
 
-- Auto-discovery of zones via MQTT
-- Real-time volume, mute, and source control
-- Device-based organization in Home Assistant
-- MQTT-based communication with AmpBridge server
+- Zone discovery via the AmpBridge HTTP API (`/api/zones`)
+- Real-time volume, mute, and source control over MQTT
+- Source names and order come from AmpBridge (no hardcoded source labels)
+- Configurable HTTP API port, HTTPS, and MQTT base topic
 
 ## Installation
 
@@ -19,9 +19,19 @@ This is a Home Assistant custom integration for AmpBridge.
 
 ## Configuration
 
-The integration will automatically discover your AmpBridge server via MQTT. Make sure your AmpBridge server is running and publishing to the MQTT broker.
+| Field | Default | Description |
+|--------|---------|-------------|
+| Host | (required) | AmpBridge hostname or IP |
+| MQTT broker port | 1885 | MQTT broker port AmpBridge connects to (often 1885 in Docker) |
+| HTTP API port | 4000 | Phoenix/API port used for zone discovery |
+| Use HTTPS for API | off | Enable if you terminate TLS in front of AmpBridge |
+| MQTT base topic | `ampbridge/zones` | Must match AmpBridge `base_topic` in its MQTT config |
+
+On setup, the integration checks that `GET /api/zones` succeeds before creating the entry.
 
 ## MQTT Topics
+
+With default base topic `ampbridge/zones`:
 
 - State: `ampbridge/zones/{zone_id}/volume`
 - State: `ampbridge/zones/{zone_id}/mute`
@@ -31,6 +41,8 @@ The integration will automatically discover your AmpBridge server via MQTT. Make
 - Command: `ampbridge/zones/{zone_id}/mute/set`
 - Command: `ampbridge/zones/{zone_id}/source/set`
 
+If you change the base topic in AmpBridge, set the same value in the integration.
+
 ## Development
 
-This integration is designed to work with the AmpBridge server running on your network. The server should be publishing zone states via MQTT and listening for control commands.
+This integration is designed to work with the AmpBridge server on your network. The server publishes zone states via MQTT and listens for control commands on the configured base topic.

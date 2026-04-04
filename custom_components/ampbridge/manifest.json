@@ -6,7 +6,7 @@
   "dependencies": ["mqtt"],
   "codeowners": ["@mjcyto"],
   "config_flow": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "icon": "icon.png",
   "logo": "logo.png",
   "iot_class": "local_push"
